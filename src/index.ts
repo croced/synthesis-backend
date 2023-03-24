@@ -37,24 +37,24 @@ app.use(cors());
 app.post("/login", async (req: Request, res: Response) => {
   const { username, password } = req.body;
 
-  // Find user by email
+  // Find user by username
   const user: UserDocument | null = await User.findOne({ username });
 
   if (!user)
-    return res.status(401).json({ status: "Invalid username or password!" });
+    return res.status(401).json({ message: "Invalid username or password!" });
 
   // Check if password is correct
   const passwordMatch = await bcrypt.compare(password, user.password);
 
   if (!passwordMatch)
-    return res.status(401).json({ status: "Invalid username or password!" });
+    return res.status(401).json({ message: "Invalid username or password!" });
 
   if (!process.env.JWT_SECRET_KEY)
-    return res.status(500).json({ status: "JWT_SECRET_KEY not set in this environment!" });
+    return res.status(500).json({ message: "JWT_SECRET_KEY not set in this environment!" });
 
   // Generate JWT token
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET_KEY, { expiresIn: "2h" });
-  res.status(201).json({ status: "success", token });
+  res.status(201).json({ token });
 });
 
 
@@ -66,16 +66,16 @@ app.post("/login", async (req: Request, res: Response) => {
 app.post("/register", async (req: Request, res: Response) => {
     const { username, password } = req.body;
 
-    // Check if email is already registered
+    // Check if username is already registered
     const existingUser: UserDocument | null = await User.findOne({ username });
     if (existingUser)
-      return res.status(400).json({ status: "Username already registered!" });
+      return res.status(400).json({ message: "Username already registered!" });
 
     if (!username || username.length < 8 || username.length > 32)
-      return res.status(400).json({ status: "Invalid username. Username must be between 8 and 32 characters long!" });
+      return res.status(400).json({ message: "Invalid username. Username must be between 8 and 32 characters long!" });
 
     if (!password || password.length < 8 || password.length > 32)
-      return res.status(400).json({ status: "Invalid password. Password must be between 8 and 32 characters long!" });
+      return res.status(400).json({ message: "Invalid password. Password must be between 8 and 32 characters long!" });
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -85,9 +85,17 @@ app.post("/register", async (req: Request, res: Response) => {
 
     try {
       await user.save();
-      res.status(201).json({ status: "User created!" });
+
+      // Log the user in now!
+      if (!process.env.JWT_SECRET_KEY)
+        return res.status(500).json({ message: "JWT_SECRET_KEY not set in this environment!" });
+  
+      // Generate JWT token
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET_KEY, { expiresIn: "2h" });
+      res.status(201).json({ token });
+
     } catch (error) {
-      res.status(500).json({ status: `Internal server error: ${error}` });
+      res.status(500).json({ message: `Internal server error: ${error}` });
     }
   });
 
