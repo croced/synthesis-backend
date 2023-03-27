@@ -6,6 +6,7 @@ import { UserDocument, User } from "./models/user";
 import { log } from "./util";
 import dotenv from "dotenv";
 import cors from "cors";
+import { Patch } from "./models/patch";
 
 dotenv.config();
 
@@ -98,6 +99,38 @@ app.post("/register", async (req: Request, res: Response) => {
       res.status(500).json({ message: `Internal server error: ${error}` });
     }
   });
+
+app.get("/user/:id", async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  // Find user by id
+  const user: UserDocument | null = await User.findOne({"_id": id});
+  if (!user)
+    return res.status(404).json({ message: "User not found!" });
+
+  res.status(200).json({ user });
+});
+
+app.post("/publishPatch", async (req: Request, res: Response) => {
+  const { patch } = req.body;
+  
+  try {
+    JSON.parse(patch);
+  } catch (e) {
+    return res.status(400).json({ message: "Invalid JSON!" });
+  }
+  
+    // Create new patch
+    const patchObj = new Patch(JSON.parse(patch));
+
+    try {
+      await patchObj.save();
+      res.status(200).json({ message: "Patch published!" });
+    } catch (error) {
+      res.status(500).json({ message: `Internal server error: ${error}` });
+    }
+});
+
 
 // Start server
 app.listen(SERVER_PORT, () => {
