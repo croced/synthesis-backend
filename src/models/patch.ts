@@ -3,6 +3,7 @@ import { model, Schema, Document } from 'mongoose';
 interface IMetaData {
     version: number;
     author: string;
+    name: string;
 }
 
 interface IOscillator {
