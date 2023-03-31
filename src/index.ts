@@ -125,6 +125,18 @@ app.post("/publishPatch", async (req: Request, res: Response) => {
 
     try {
       await patchObj.save();
+
+      // add patch to user's list of patches
+      const { meta } = patchObj;
+      if (meta.author) 
+      {
+        const existingUser: UserDocument | null = await User.findOne({ username: meta.author });
+        if (existingUser)
+        {
+          await User.updateOne({ username: meta.author }, { $push: {patches: patchObj._id} });
+        }
+      };
+
       res.status(200).json({ message: "Patch published!" });
     } catch (error) {
       res.status(500).json({ message: `Internal server error: ${error}` });
