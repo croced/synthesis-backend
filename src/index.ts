@@ -6,7 +6,7 @@ import { UserDocument, User } from "./models/user";
 import { log } from "./util";
 import dotenv from "dotenv";
 import cors from "cors";
-import { Patch } from "./models/patch";
+import { Patch, PatchDocument } from "./models/patch";
 
 dotenv.config();
 
@@ -31,10 +31,9 @@ app.use(express.json());
 app.use(cors());
 
 /**
- * Login Route
- * POST /login
+ * GET /login
+ * Login route
  */
-
 app.post("/login", async (req: Request, res: Response) => {
   const { username, password } = req.body;
 
@@ -58,12 +57,10 @@ app.post("/login", async (req: Request, res: Response) => {
   res.status(201).json({ token });
 });
 
-
 /**
- * Register Route
  * POST /register
+ * Register a new user
  */
-
 app.post("/register", async (req: Request, res: Response) => {
     const { username, password } = req.body;
 
@@ -100,17 +97,25 @@ app.post("/register", async (req: Request, res: Response) => {
     }
   });
 
+/**
+ * GET /user/:id
+ * Get user by id
+ */
 app.get("/user/:id", async (req: Request, res: Response) => {
   const { id } = req.params;
 
   // Find user by id
-  const user: UserDocument | null = await User.findOne({"_id": id});
+  const user: UserDocument | null = await User.findOne({"_id": new mongoose.Types.ObjectId(id)});
   if (!user)
     return res.status(404).json({ message: "User not found!" });
 
   res.status(200).json({ user });
 });
 
+/**
+ * POST /publishPatch
+ * Publish a patch
+ */
 app.post("/publishPatch", async (req: Request, res: Response) => {
   const { patch } = req.body;
   
@@ -137,12 +142,49 @@ app.post("/publishPatch", async (req: Request, res: Response) => {
         }
       };
 
-      res.status(200).json({ message: "Patch published!" });
+      res.status(200).json({ patch: patchObj });
     } catch (error) {
       res.status(500).json({ message: `Internal server error: ${error}` });
     }
 });
 
+/**
+ * GET /getPatches/:userId
+ * Get all patches for a user
+ */
+app.get('/getPatches/:userId', async (req: Request, res: Response) => {
+    const { userId } = req.params;
+
+    // Find user by id
+    const user: UserDocument | null = await User.findOne({"_id": new mongoose.Types.ObjectId(userId)});
+    if (!user)
+      return res.status(404).json({ message: "User not found!" });
+
+    const patches = user.patches;
+
+    const patchObjs = await Patch.find({ _id: { $in: patches } });
+
+    patchObjs ? res.status(200).json({ patches: patchObjs }) 
+      : res.status(404).json({ message: "No patches found!" });
+});
+
+/**
+ * GET /getPatches
+ * Get all patches
+ */
+app.get('/getPatches', async (_req: Request, res: Response) => {
+  const patchObjs = await Patch.find({});
+
+  patchObjs ? res.status(200).json({ patches: patchObjs }) 
+    : res.status(404).json({ message: "No patches found!" });
+});
+
+app.post("/patches", async (req: Request, res: Response) => {
+  const { patchName } = req.body;
+
+  const patchObjs = await Patch.find({ "meta.name": { "$regex": patchName, "$options": "i" } },);
+  res.status(200).json({ patches: patchObjs });
+});
 
 // Start server
 app.listen(SERVER_PORT, () => {
