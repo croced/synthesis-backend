@@ -7,6 +7,7 @@ import { log } from "./util";
 import dotenv from "dotenv";
 import cors from "cors";
 import { Patch, PatchDocument } from "./models/patch";
+import * as _ from "lodash";
 
 dotenv.config();
 
@@ -117,29 +118,33 @@ app.get("/user/:id", async (req: Request, res: Response) => {
  * Publish a patch
  */
 app.post("/publishPatch", async (req: Request, res: Response) => {
-  const { patch } = req.body;
+    const { patch } = req.body;
   
-  try {
-    JSON.parse(patch);
-  } catch (e) {
-    return res.status(400).json({ message: "Invalid JSON!" });
-  }
-  
+    try {
+      JSON.parse(patch);
+
+      if (patch._id) {
+        delete patch._id;
+      }
+    } catch (e) {
+      return res.status(400).json({ message: "Invalid JSON!" });
+    }
+
     // Create new patch
-    const patchObj = new Patch(JSON.parse(patch));
+    const patchObj = new Patch((_.omit(JSON.parse(patch), "_id")));
 
     try {
       await patchObj.save();
 
       // add patch to user's list of patches
       const { meta } = patchObj;
+
       if (meta.author) 
       {
         const existingUser: UserDocument | null = await User.findOne({ username: meta.author });
+
         if (existingUser)
-        {
           await User.updateOne({ username: meta.author }, { $push: {patches: patchObj._id} });
-        }
       };
 
       res.status(200).json({ patch: patchObj });
