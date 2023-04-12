@@ -150,7 +150,7 @@ app.post("/publishPatch", async (req: Request, res: Response) => {
 
 /**
  * GET /getPatches/:userId
- * Get all patches for a user
+ * Get all authored patches for a user
  */
 app.get('/getPatches/:userId', async (req: Request, res: Response) => {
     const { userId } = req.params;
@@ -166,6 +166,67 @@ app.get('/getPatches/:userId', async (req: Request, res: Response) => {
 
     patchObjs ? res.status(200).json({ patches: patchObjs }) 
       : res.status(404).json({ message: "No patches found!" });
+});
+
+/**
+ * GET /getPatchBank/:userId
+ * Get a user's patch bank
+ */
+app.get('/patchBank/:userId', async (req: Request, res: Response) => {
+  const { userId } = req.params;
+
+  // Find user by id
+  const user: UserDocument | null = await User.findOne({"_id": new mongoose.Types.ObjectId(userId)});
+  if (!user)
+    return res.status(404).json({ message: "User not found!" });
+
+  const patches = user.patchBank;
+
+  const patchObjs = await Patch.find({ _id: { $in: patches } });
+
+  patchObjs ? res.status(200).json({ patchBank: patchObjs }) 
+    : res.status(404).json({ message: "No patches found!" });
+});
+
+/**
+ * POST /patchBank
+ * Add a patch to a user's patch bank
+ */
+app.post(`patchBank`, async (req: Request, res: Response) => {
+  const { userId, patchId } = req.body;
+
+  // Find user by id
+  const user: UserDocument | null = await User.findOne({"_id": new mongoose.Types.ObjectId(userId)});
+  if (!user)
+    return res.status(404).json({ message: "User not found!" });
+
+  if (user.patchBank.includes(patchId))
+    return;
+  
+  const updatedBank = User.updateOne({ _id: userId }, { $push: { patchBank: patchId } });
+
+  return res.status(200).json({ patchBank: updatedBank });
+});
+
+/**
+ * DELETE /patchBank
+ * Remove a patch from a user's patch bank
+ */
+app.delete(`patchBank`, async (req: Request, res: Response) => {
+  const { userId, patchId } = req.body;
+
+  // Find user by id
+  const user: UserDocument | null = await User.findOne({"_id": new mongoose.Types.ObjectId(userId)});
+  if (!user)
+    return res.status(404).json({ message: "User not found!" });
+
+  if (user.patchBank.includes(patchId))
+  {
+    const updatedBank = User.updateOne({ _id: userId }, { $push: { patchBank: patchId } });
+    return res.status(200).json({ patchBank: updatedBank });
+  }
+
+  return res.status(200).json({ patchBank: user.patchBank });
 });
 
 /**
