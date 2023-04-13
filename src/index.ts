@@ -180,58 +180,128 @@ app.get('/getPatches/:userId', async (req: Request, res: Response) => {
 app.get('/patchBank/:userId', async (req: Request, res: Response) => {
   const { userId } = req.params;
 
+  if (!userId)
+    return res.status(400).json({ message: "Invalid userId!" });
+
   // Find user by id
   const user: UserDocument | null = await User.findOne({"_id": new mongoose.Types.ObjectId(userId)});
   if (!user)
     return res.status(404).json({ message: "User not found!" });
 
-  const patches = user.patchBank;
+  const patchBank = user.patchBank;
+  const authoredPatches = user.patches;
 
-  const patchObjs = await Patch.find({ _id: { $in: patches } });
+  const patchObjs = await Patch.find({ _id: { $in: patchBank } });
+  const authoredPatchObjs = await Patch.find({ _id: { $in: authoredPatches } });
 
-  patchObjs ? res.status(200).json({ patchBank: patchObjs }) 
+  const allPatches = _.union(patchObjs, authoredPatchObjs);
+
+  patchObjs ? res.status(200).json({ patchBank: allPatches }) 
     : res.status(404).json({ message: "No patches found!" });
 });
 
 /**
- * POST /patchBank
+ * POST /getPatchBank/:userId
  * Add a patch to a user's patch bank
  */
-app.post(`patchBank`, async (req: Request, res: Response) => {
-  const { userId, patchId } = req.body;
+app.post('/patchBank/:userId', async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  const { patchId } = req.body;
 
-  // Find user by id
-  const user: UserDocument | null = await User.findOne({"_id": new mongoose.Types.ObjectId(userId)});
-  if (!user)
-    return res.status(404).json({ message: "User not found!" });
+  if (!userId)
+    return res.status(400).json({ message: "Invalid userId!" });
 
-  if (user.patchBank.includes(patchId))
-    return;
-  
-  const updatedBank = User.updateOne({ _id: userId }, { $push: { patchBank: patchId } });
+  if (!patchId)
+    return res.status(400).json({ message: "Invalid patchId!" });
 
-  return res.status(200).json({ patchBank: updatedBank });
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found!" });
+    }
+
+    if (user.patchBank.includes(patchId)) {
+      const patches = user.patchBank;
+      const patchObjs = await Patch.find({ _id: { $in: patches } });
+      const authoredPatches = user.patches;
+      const authoredPatchObjs = await Patch.find({ _id: { $in: authoredPatches } });
+
+      const allPatches = _.union(patchObjs, authoredPatchObjs);
+
+      return res.status(200).json({ patchBank: allPatches });
+    }
+
+    user.patchBank.push(patchId);
+    await user.save();
+
+    const updatedUser = await User.findById(userId);
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found!" });
+    }
+
+    const patches = updatedUser.patchBank;
+    const patchObjs = await Patch.find({ _id: { $in: patches } });
+    const authoredPatches = user.patches;
+    const authoredPatchObjs = await Patch.find({ _id: { $in: authoredPatches } });
+
+    const allPatches = _.union(patchObjs, authoredPatchObjs);
+
+    return res.status(200).json({ patchBank: allPatches });
+  } catch (error: any) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 /**
- * DELETE /patchBank
- * Remove a patch from a user's patch bank
+ * DELETE /patchBank/:userId/:patchId
+ * Remove a patch from the user's patch bank
  */
-app.delete(`patchBank`, async (req: Request, res: Response) => {
-  const { userId, patchId } = req.body;
+app.delete('/patchBank/:userId', async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  const { patchId } = req.body;
+
+  if (!userId)
+    return res.status(400).json({ message: "Invalid userId!" });
+
+  if (!patchId)
+    return res.status(400).json({ message: "Invalid patchId!" });
 
   // Find user by id
   const user: UserDocument | null = await User.findOne({"_id": new mongoose.Types.ObjectId(userId)});
-  if (!user)
+  if (!user) {
     return res.status(404).json({ message: "User not found!" });
-
-  if (user.patchBank.includes(patchId))
-  {
-    const updatedBank = User.updateOne({ _id: userId }, { $push: { patchBank: patchId } });
-    return res.status(200).json({ patchBank: updatedBank });
   }
 
-  return res.status(200).json({ patchBank: user.patchBank });
+  // Check if patch exists in user's patch bank
+  const patchIndex = user.patchBank.indexOf(patchId);
+
+  if (patchIndex === -1) {
+    const patches = user.patchBank;
+    const patchObjs = await Patch.find({ _id: { $in: patches } });
+    const authoredPatches = user.patches;
+    const authoredPatchObjs = await Patch.find({ _id: { $in: authoredPatches } });
+
+    const allPatches = _.union(patchObjs, authoredPatchObjs);
+
+    return res.status(200).json({ patchBank: allPatches });
+  }
+
+  // Remove patch from user's patch bank
+  user.patchBank.splice(patchIndex, 1);
+
+  // Save changes to user document
+  await user.save();
+
+  const patches = user.patchBank;
+  const patchObjs = await Patch.find({ _id: { $in: patches } });
+  const authoredPatches = user.patches;
+  const authoredPatchObjs = await Patch.find({ _id: { $in: authoredPatches } });
+
+  const allPatches = _.union(patchObjs, authoredPatchObjs);
+
+  return res.status(200).json({ patchBank: allPatches });
 });
 
 /**
