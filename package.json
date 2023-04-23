@@ -6,7 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon",
-    "start": "ts-node ./api/index.ts"
+    "start": "ts-node ./api/index.ts",
+    "build": "rimraf dist && tsc",
+    "ts.check": "tsc --project tsconfig.json",
+    "add-build": "git add dist"
   },
   "author": "",
   "license": "ISC",
@@ -26,6 +29,8 @@
     "passport-google-oauth": "^2.0.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
+    "pre-commit": "^1.2.2",
+    "rimraf": "^5.0.0",
     "typescript": "^5.0.2"
   },
   "devDependencies": {
@@ -39,5 +44,10 @@
     "@types/passport-google-oauth": "^1.0.42",
     "@types/passport-local": "^1.0.35",
     "ts-node": "^10.9.1"
-  }
+  },
+  "pre-commit": [
+    "ts.check",
+    "build",
+    "add-build"
+]
 }
