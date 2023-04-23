@@ -2,11 +2,11 @@ import express, { Request, Response } from "express";
 import * as mongoose from 'mongoose';
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { UserDocument, User } from "../models/user";
-import { log } from "../util";
+import { UserDocument, User } from "./models/user";
+import { log } from "./util";
 import dotenv from "dotenv";
 import cors from "cors";
-import { Patch, PatchDocument } from "../models/patch";
+import { Patch, PatchDocument } from "./models/patch";
 import * as _ from "lodash";
 
 dotenv.config();
