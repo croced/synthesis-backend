@@ -2,11 +2,11 @@ import express, { Request, Response } from "express";
 import * as mongoose from 'mongoose';
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { UserDocument, User } from "./models/user";
-import { log } from "./util";
+import { UserDocument, User } from "../models/user";
+import { log } from "../util";
 import dotenv from "dotenv";
 import cors from "cors";
-import { Patch, PatchDocument } from "./models/patch";
+import { Patch, PatchDocument } from "../models/patch";
 import * as _ from "lodash";
 
 dotenv.config();
@@ -320,6 +320,19 @@ app.post("/patches", async (req: Request, res: Response) => {
 
   const patchObjs = await Patch.find({ "meta.name": { "$regex": patchName, "$options": "i" } },);
   res.status(200).json({ patches: patchObjs });
+});
+
+// Test web connection
+app.get("/testWebConnection", async (req: Request, res: Response) => {
+  res.status(200).json({ message: "Hello client!" });
+});
+
+// Test DB connection - get all patches
+app.get("/testDbConnection", async (req: Request, res: Response) => {
+  const patchObjs = await Patch.find({});
+
+  patchObjs ? res.status(200).json({ patches: patchObjs }) 
+    : res.status(404).json({ message: "No patches found!" });
 });
 
 // Start server
